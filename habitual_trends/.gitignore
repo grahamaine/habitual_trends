@@ -1,0 +1,8 @@
+/target
+
+.web
+.states
+*.db
+*.py[cod]
+__pycache__/
+assets/external/
