@@ -1,46 +1,35 @@
-# Stage 1: Base image with Python and Node.js
-FROM python:3.11-slim-bookworm
+# Stage 1: Build the Rust Backend
+FROM rust:1.75-slim as rust-builder
+WORKDIR /app
+COPY . .
+RUN cargo build --release
 
-# Set environment variables to prevent Python from buffering output
-# and to avoid writing .pyc files
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
-
-# Install system dependencies
-# Node.js and npm are required for Reflex to build the frontend
-# curl/unzip are often needed for downloading assets
-RUN apt-get update && apt-get install -y \
-    nodejs \
-    npm \
-    curl \
-    unzip \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set the working directory in the container
+# Stage 2: Build the Python/Reflex Frontend
+FROM python:3.11-slim
 WORKDIR /app
 
-# Copy the python requirements first to leverage Docker cache
+# Install system dependencies for Reflex
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application code
+# Copy the rest of the app
 COPY . .
 
-# Initialize Reflex (creates necessary config if missing) and build the frontend
-# We use --frontend-only export to prepare the static assets
+# Copy the compiled Rust binary from the first stage
+COPY --from=rust-builder /app/target/release/habitual_backend /app/target/release/habitual_backend
+
+# Initialize Reflex (this prepares the frontend)
 RUN reflex init
-RUN reflex export --frontend-only --no-zip
 
-# Expose the port that Fly.io (or your host) expects
-# Reflex defaults: Backend 8000, Frontend 3000. 
-# We expose 8080 as a common standard for container runners.
-ENV PORT=8080
+# Expose the ports (8080 for Rust, 3000 for Reflex)
 EXPOSE 8080
+EXPOSE 3000
 
-# Command to run the application in production mode
-# This runs the backend and serves the frontend assets
-CMD ["reflex", "run", "--env", "prod", "--backend-host", "0.0.0.0", "--backend-port", "8080"]
+# Start both using a simple shell command (or use a process manager like foreman)
+CMD /app/target/release/habitual_backend & python -m reflex run --env prod

@@ -1,1 +1,1 @@
-C:\Users\Lenovo\Desktop\Visual\ Code\ Project\ -\ Habitual\ Trends\target\debug\habitual_trends.exe: C:\Users\Lenovo\Desktop\Visual\ Code\ Project\ -\ Habitual\ Trends\src\main.rs
+C:\Users\Lenovo\Desktop\habitual_trends\target\debug\habitual_trends.exe: C:\Users\Lenovo\Desktop\habitual_trends\src\main.rs

@@ -22,7 +22,7 @@ build/
 # VS Code settings
 .vscode/
 .env
-
+/target
 # Added by cargo
 #
 # already existing elements were commented out
