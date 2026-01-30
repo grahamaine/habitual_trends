@@ -1,3 +1,7 @@
+.states
+.web
+*.db
+assets/external/
 # Virtual Environment (Do not upload!)
 venv/
 .venv/
