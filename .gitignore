@@ -1,30 +1,36 @@
-.states
-.web
-*.db
-assets/external/
-# Virtual Environment (Do not upload!)
-venv/
-.venv/
-env/
-
-# Sensitive Data (Do not upload!)
+# --- Environment / Secrets ---
 .env
-
-# Python cache
+*.env
+.venv/
+venv/
+env/
 __pycache__/
-*.py[cod]
+.python-version
 
-# Build artifacts
+# --- LLM / Observability Tools ---
+# Keeps Opik/Comet/LangChain keys and local logs out
+.comet/
+.opik/
+opik_logs/
+llm_cache/
+
+# --- Rust / Backend ---
+/target/
+**/*.rs.bk
+Cargo.lock (optional: usually kept for apps, ignored for libraries)
+
+# --- Frontend / Node ---
+node_modules/
 dist/
 build/
-*.egg-info/
+.DS_Store
 
-# VS Code settings
+# --- IDEs ---
 .vscode/
-.env
-/target
-# Added by cargo
-#
-# already existing elements were commented out
-
-#/target
+.idea/
+node_modules
+node_modules
+node_modules
+node_modules
+node_modules
+node_modules
