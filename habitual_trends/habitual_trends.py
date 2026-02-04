@@ -1,6 +1,28 @@
 import reflex as rx
 import httpx  # Required for connecting to your Rust backend
+import reflex as rx
+import httpx
+from typing import List, Dict
 
+class TrendState(rx.State):
+    # The data list that will store our Rust API response
+    trends: List[Dict[str, str]] = []
+    is_loading: bool = False
+
+    async def fetch_trends(self):
+        self.is_loading = True
+        yield  # Update UI to show loading state
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                # Replace with your actual Rust API URL
+                response = await client.get("http://localhost:8080/api/trends")
+                if response.status_code == 200:
+                    self.trends = response.json()
+            except Exception as e:
+                print(f"Error connecting to Rust backend: {e}")
+            finally:
+                self.is_loading = False
 # --- 1. STATE & LOGIC ---
 class State(rx.State):
     """The app state."""

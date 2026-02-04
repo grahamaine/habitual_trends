@@ -1,35 +1,21 @@
-# Stage 1: Build the Rust Backend
-FROM rust:1.75-slim as rust-builder
+# Stage 1: The Builder
+FROM rust:1.75-slim AS builder
 WORKDIR /app
 COPY . .
+# Build only the release binary
 RUN cargo build --release
 
-# Stage 2: Build the Python/Reflex Frontend
-FROM python:3.11-slim
+# Stage 2: The Runtime (The "Lightweight" version)
+FROM debian:bookworm-slim
 WORKDIR /app
 
-# Install system dependencies for Reflex
-RUN apt-get update && apt-get install -y \
-    curl \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
+# Copy only the compiled binary from the builder
+COPY --from=builder /app/target/release/habitual_trends .
 
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Set environment variables (e.g., for your Gemini API keys)
+ENV RUST_LOG=info
 
-# Copy the rest of the app
-COPY . .
-
-# Copy the compiled Rust binary from the first stage
-COPY --from=rust-builder /app/target/release/habitual_backend /app/target/release/habitual_backend
-
-# Initialize Reflex (this prepares the frontend)
-RUN reflex init
-
-# Expose the ports (8080 for Rust, 3000 for Reflex)
+# Expose the port your backend runs on
 EXPOSE 8080
-EXPOSE 3000
 
-# Start both using a simple shell command (or use a process manager like foreman)
-CMD /app/target/release/habitual_backend & python -m reflex run --env prod
+CMD ["./habitual_trends"]
