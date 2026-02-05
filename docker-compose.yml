@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # --- LiteLLM Proxy (The AI Backend) ---
+  litellm_proxy:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    environment:
+      # FIX: We leave DATABASE_URL blank to prevent Prisma/DB startup crashes
+      - DATABASE_URL=
+      # SECURITY: Your Master Key for API requests
+      - LITELLM_MASTER_KEY=sk-1234
+    command: [
+      "--config", "/app/config.yaml", 
+      "--port", "8000", 
+      "--detailed_debug"
+    ]
+    restart: always
+
+  # --- Reflex App (The Frontend & State Server) ---
+  reflex_app:
+    build: .
+    container_name: habitual_trends_ui
+    ports:
+      - "3000:3000"  # Frontend UI
+      - "8001:8001"  # Reflex Backend API
+    environment:
+      # Connects Reflex to the LiteLLM container inside the Docker network
+      - LITELLM_URL=http://litellm_backend:8000
+      - LITELLM_MASTER_KEY=sk-1234
+    depends_on:
+      - litellm_proxy
+    restart: always
+    

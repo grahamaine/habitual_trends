@@ -1,21 +1,34 @@
-# Stage 1: The Builder
-FROM rust:1.75-slim AS builder
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
+
+# Set the working directory
 WORKDIR /app
+
+# Install system dependencies (needed for Reflex and Node.js setup)
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of your application code
 COPY . .
-# Build only the release binary
-RUN cargo build --release
 
-# Stage 2: The Runtime (The "Lightweight" version)
-FROM debian:bookworm-slim
-WORKDIR /app
+# Initialize Reflex (this installs the necessary frontend components)
+RUN reflex init
 
-# Copy only the compiled binary from the builder
-COPY --from=builder /app/target/release/habitual_trends .
+# Export the frontend (this creates the production-ready JS/HTML)
+# This will run the 'reflex export' command to bundle the UI
+RUN reflex export --frontend-only --no-zip
 
-# Set environment variables (e.g., for your Gemini API keys)
-ENV RUST_LOG=info
+# Expose the ports Reflex uses
+# 3000 for the frontend UI, 8001 for the Reflex backend API
+EXPOSE 3000 8001
 
-# Expose the port your backend runs on
-EXPOSE 8080
-
-CMD ["./habitual_trends"]
+# Run the app in production mode
+CMD ["reflex", "run", "--env", "prod"]
