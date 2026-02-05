@@ -1,60 +1,6 @@
-# -----------------------------
-# Security & Secrets (CRITICAL)
-# -----------------------------
-.env
-.env.*
-.streamlit/secrets.toml
-**/*.env
-**/.env
-fly.toml.bak
-
-# -----------------------------
-# Python / Virtual Environments
-# -----------------------------
-# Ignore local virtual envs (Docker creates its own)
-venv/
 .venv/
-env/
-ENV/
-
-# Ignore compiled python files
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-
-# -----------------------------
-# Reflex / Frontend Build Artifacts
-# -----------------------------
-# We ignore .web because Docker should build the frontend fresh
 .web/
+*.pyc
+.env
 node_modules/
-npm-debug.log
-yarn-error.log
-package-lock.json
-bun.lockb
-
-# -----------------------------
-# Rust Backend (If applicable)
-# -----------------------------
-# Ignore heavy Rust build artifacts
-rust-backend/target/
-target/
-
-# -----------------------------
-# Version Control & IDEs
-# -----------------------------
-.git/
-.gitignore
-.dockerignore
-.vscode/
-.idea/
-*.swp
-.DS_Store
-
-# -----------------------------
-# Documentation & Misc
-# -----------------------------
-README.md
-SECURITY.md
-Dockerfiler
