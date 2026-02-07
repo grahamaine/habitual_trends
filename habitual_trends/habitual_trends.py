@@ -1,79 +1,59 @@
 import reflex as rx
-import httpx  # Required for connecting to your Rust backend
-import reflex as rx
 import httpx
 from typing import List, Dict
 
-class TrendState(rx.State):
-    # The data list that will store our Rust API response
-    trends: List[Dict[str, str]] = []
-    is_loading: bool = False
+# CONFIG: URL for your Python FastAPI backend
+BACKEND_URL = "http://127.0.0.1:3005/api/habits"
 
-    async def fetch_trends(self):
-        self.is_loading = True
-        yield  # Update UI to show loading state
-        
-        async with httpx.AsyncClient() as client:
-            try:
-                # Replace with your actual Rust API URL
-                response = await client.get("http://localhost:8080/api/trends")
-                if response.status_code == 200:
-                    self.trends = response.json()
-            except Exception as e:
-                print(f"Error connecting to Rust backend: {e}")
-            finally:
-                self.is_loading = False
 # --- 1. STATE & LOGIC ---
 class State(rx.State):
-    """The app state."""
-    # Login Credentials
-    email: str = ""
-    password: str = ""
-
-    # Dashboard Stats
+    """The app state managing data and communication."""
+    habits: List[Dict] = []
+    new_habit_name: str = ""
+    
+    # Dashboard Mock Stats (Can be automated later)
     streak: int = 12
     completion: str = "85%"
-    total_habits: int = 5
+    total_habits: int = 0
 
-    # LOGIN LOGIC: Connects to your Rust backend
-    async def handle_login(self):
-        print(f"Sending login request for: {self.email}")
-        
+    async def fetch_habits(self):
+        """Fetch real habits from the SQLite database via the FastAPI backend."""
         async with httpx.AsyncClient() as client:
             try:
-                # This talks to your Rust 'main.rs' running on port 8080
-                response = await client.post(
-                    "http://localhost:8080/api/login", 
-                    json={
-                        "email": self.email, 
-                        "password": self.password
-                    }
-                )
-                
+                response = await client.get(BACKEND_URL)
                 if response.status_code == 200:
-                    print("✅ Success! Backend replied:", response.json())
-                    # You could add a redirect here later: return rx.redirect("/dashboard")
-                else:
-                    print(f"❌ Failed. Status: {response.status_code}")
-                    print("Reason:", response.text)
-
+                    self.habits = response.json()
+                    self.total_habits = len(self.habits)
             except Exception as e:
-                print(f"⚠️ Connection Error. Is 'cargo run' active? \nDetails: {e}")
+                print(f"Error fetching habits: {e}")
 
-    def increase_streak(self):
-        """A test function to show the stats are 'alive'."""
-        self.streak += 1
+    async def add_habit(self):
+        """Send a new habit to the database and refresh the UI."""
+        if not self.new_habit_name.strip():
+            return
+            
+        async with httpx.AsyncClient() as client:
+            try:
+                await client.post(BACKEND_URL, json={"name": self.new_habit_name})
+                self.new_habit_name = ""  # Clear input field
+                await self.fetch_habits()  # Refresh the list
+            except Exception as e:
+                print(f"Error adding habit: {e}")
+
+    def on_load(self):
+        """Runs automatically when the page opens."""
+        return State.fetch_habits
 
 # --- 2. UI COMPONENTS (Helper Functions) ---
 
-def stats_card(title: str, value: str, subtext: str):
+def stats_card(title: str, value: rx.Var, subtext: str):
     """A reusable glass-morphism card for the top stats."""
     return rx.vstack(
         rx.text(title, color="#a0aec0", font_size="0.9em", font_weight="bold"),
         rx.text(value, color="cyan", font_size="2em", font_weight="bold"),
         rx.text(subtext, color="white", font_size="0.8em"),
-        bg="rgba(18, 25, 45, 0.8)", # Semi-transparent dark blue
-        backdrop_filter="blur(10px)", # The "Glass" blur effect
+        bg="rgba(18, 25, 45, 0.8)",
+        backdrop_filter="blur(10px)",
         padding="1.5em",
         border_radius="15px",
         border="1px solid rgba(255, 255, 255, 0.1)",
@@ -85,105 +65,115 @@ def stats_card(title: str, value: str, subtext: str):
 def sidebar():
     """The left-hand navigation sidebar."""
     return rx.vstack(
-        # -- Logo Area --
+        # Logo Area
         rx.vstack(
             rx.icon(tag="activity", color="cyan", size=40),
-            rx.heading("HABITUAL TRENDS", size="4", color="cyan", letter_spacing="2px"),
+            rx.heading("HABITUAL", size="4", color="cyan", letter_spacing="2px"),
             rx.text("AI AGENT", size="1", color="white", letter_spacing="4px"),
             align_items="center",
             spacing="1",
             padding_bottom="3em",
         ),
         
-        # -- Login Form --
+        # Navigation
         rx.vstack(
-            rx.input(
-                placeholder="Email", 
-                on_change=State.set_email, 
-                bg="transparent", border="1px solid #334", color="white"
-            ),
-            rx.input(
-                placeholder="Password", 
-                type="password", 
-                on_change=State.set_password, 
-                bg="transparent", border="1px solid #334", color="white"
-            ),
-            rx.link("Forgot Password?", color="gray", font_size="0.8em", align_self="end"),
-            
-            rx.button(
-                "Login", 
-                on_click=State.handle_login, # Calls the Rust API
-                bg="linear-gradient(90deg, #00f0ff, #0077ff)", 
-                color="black", 
-                width="100%",
-                _hover={"opacity": 0.8}
-            ),
-            # Test Button
-            rx.button(
-                "Test: Add Streak +1", 
-                on_click=State.increase_streak,
-                variant="outline", 
-                color="cyan", 
-                border_color="cyan", 
-                width="100%",
-                font_size="0.8em"
-            ),
-            spacing="4",
-            width="100%",
-            padding_bottom="3em",
-        ),
-
-        # -- Navigation Menu --
-        rx.vstack(
-            rx.hstack(rx.icon(tag="layout_dashboard", color="cyan"), rx.text("Dashboard", color="white"), spacing="3", cursor="pointer"),
-            rx.hstack(rx.icon(tag="bar_chart_2", color="cyan"), rx.text("Analytics", color="white"), spacing="3", cursor="pointer"),
-            rx.hstack(rx.icon(tag="settings", color="cyan"), rx.text("Settings", color="white"), spacing="3", cursor="pointer"),
+            rx.hstack(rx.icon(tag="layout_dashboard", color="cyan"), rx.text("Dashboard", color="white"), spacing="3"),
+            rx.hstack(rx.icon(tag="list", color="cyan"), rx.text("My Habits", color="white"), spacing="3"),
+            rx.hstack(rx.icon(tag="settings", color="cyan"), rx.text("Settings", color="white"), spacing="3"),
             align_items="start",
             spacing="6",
             width="100%"
         ),
-
-        # Sidebar Styling
-        bg="#0B1120", # Deep dark navy
+        
+        bg="#0B1120",
         height="100vh",
-        width="350px",
+        width="280px",
         padding="2em",
-        align_items="center",
         border_right="1px solid #1f2937",
-        display=["none", "none", "flex", "flex"], # Responsive: Hide on mobile
+        display=["none", "none", "flex", "flex"],
+    )
+
+def habit_item(habit: Dict):
+    """A single row representing a habit in the list."""
+    return rx.hstack(
+        rx.hstack(
+            rx.icon(tag="circle", size=18, color="gray"),
+            rx.text(habit["name"], color="white", font_weight="medium"),
+            spacing="3",
+        ),
+        rx.badge(f"Streak: {habit['streak']}", color_scheme="cyan", variant="outline"),
+        justify="space-between",
+        width="100%",
+        padding="1em",
+        border_bottom="1px solid rgba(255, 255, 255, 0.05)",
+        _hover={"bg": "rgba(255, 255, 255, 0.02)"},
     )
 
 # --- 3. MAIN PAGE LAYOUT ---
 def index():
     return rx.hstack(
-        # 1. The Sidebar
         sidebar(),
-
-        # 2. The Main Content (With Background Image)
         rx.vstack(
-            # Header Text
-            rx.heading("Welcome back, Graham", color="white", size="8", margin_bottom="1em"),
+            rx.heading("Dashboard Overview", color="white", size="7", margin_bottom="1em"),
             
-            # The Stats Row
+            # Stats Row
             rx.grid(
-                stats_card("Current Streak", State.streak, "Days in a row"),
-                stats_card("Completion", State.completion, "All tasks done"),
-                stats_card("Total Habits", State.total_habits, "Active habits"),
+                stats_card("Global Streak", State.streak, "Days Active"),
+                stats_card("Completion", State.completion, "Today's Target"),
+                stats_card("Active Habits", State.total_habits, "Tracking Now"),
                 columns="3",
                 spacing="5",
                 width="100%",
             ),
 
-            # Main Background Styling
-            bg_image="url('/dashboard_bg.jpg')", # Ensure this file is in your 'assets' folder
-            bg_size="cover",
-            bg_position="center",
+            # Habit Tracker Section
+            rx.vstack(
+                rx.heading("Manage Habits", size="5", color="white", margin_top="2em"),
+                
+                # Input Field to Add New Habits
+                rx.hstack(
+                    rx.input(
+                        placeholder="What's your next habit?", 
+                        on_change=State.set_new_habit_name,
+                        value=State.new_habit_name,
+                        bg="rgba(255, 255, 255, 0.05)",
+                        border="1px solid #334",
+                        color="white",
+                        _focus={"border_color": "cyan"},
+                        width="400px"
+                    ),
+                    rx.button(
+                        "Create Habit", 
+                        on_click=State.add_habit, 
+                        bg="cyan", 
+                        color="black",
+                        _hover={"bg": "#00e5ff"}
+                    ),
+                    spacing="4",
+                    padding_y="1em"
+                ),
+
+                # The Habit List
+                rx.vstack(
+                    rx.foreach(State.habits, habit_item),
+                    width="100%",
+                    bg="rgba(18, 25, 45, 0.5)",
+                    border_radius="12px",
+                    border="1px solid rgba(255, 255, 255, 0.1)",
+                    padding="1em",
+                ),
+                align_items="start",
+                width="100%",
+            ),
+
+            bg="#0f172a",
             width="100%",
             height="100vh",
             padding="3em",
-            spacing="5",
+            overflow_y="auto",
         ),
         spacing="0",
+        on_mount=State.on_load, # Fetches data when page loads
     )
 
 app = rx.App()

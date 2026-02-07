@@ -1,20 +1,18 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Habitual Trends
 
-# Run and deploy your AI Studio app
+**Habitual Trends** is an AI-powered health and lifestyle tracking application. It leverages generative AI to analyze user habits, providing personalized insights and trends to help users maintain a healthier lifestyle.
 
-This contains everything you need to run your app locally.
+## 🚀 Tech Stack
 
-View your app in AI Studio: https://ai.studio/apps/drive/10g4X_DL_KjQidRFPZ2rC5TrNi8o2p_X-
+* **Frontend/Backend:** [Reflex](https://reflex.dev/) (Full-stack Python Framework)
+* **AI Engine:** Google Gemini (`google-generativeai`)
+* **Observability:** [Opik](https://www.comet.com/docs/opik/) (LLM Evaluation & Tracing)
+* **Database:** SQLModel (SQLAlchemy + Pydantic)
+* **Data Analysis:** Pandas & HTTPX
 
-## Run Locally
+## 🛠️ Setup Instructions
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 1. Clone the Repository
+```bash
+git clone <your-repo-url>
+cd habitual-trends

@@ -1,0 +1,45 @@
+[project]
+name = "habitual-trends"
+version = "0.1.0"
+description = "AI-powered habit tracking with Gemini reasoning and Rust-backed analytics."
+authors = [
+    {name = "Graham Byagaba", email = "ainegb05@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+keywords = ["habit-tracker", "gemini-ai", "reflex", "rust", "analytics"]
+
+dependencies = [
+    "reflex>=0.4.0",           # Full-stack Python framework
+    "google-generativeai",    # Gemini API for AI coaching
+    "opik",                   # LLM evaluation and tracing
+    "sqlmodel",               # Database ORM for habit storage
+    "python-dotenv",          # For managing .env secrets
+    "httpx[http2]",           # Async requests with HTTP/2 support
+    "pandas",                 # Data processing
+    "pydantic>=2.0",          # Modern data validation (works with SQLModel)
+    "loguru",                 # Better logging than standard lib
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",                 # Testing framework
+    "black",                  # Code formatter
+    "ruff",                   # Ultra-fast linter
+    "pyright",                # Static type checking
+]
+
+[tool.setuptools]
+packages = ["habitual_trends"]
+
+[tool.reflex]
+app_name = "habitual_trends"
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I"]      # Linting, Flake8, and Import sorting
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
