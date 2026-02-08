@@ -1,1 +1,1 @@
-from habitual_trends.habitual_trends import State, app
+from .habitual_trends import app
