@@ -4,3 +4,10 @@ assets/external/
 __pycache__/
 *.py[cod]
 *.db
+.env
+__pycache__/
+*.pyc
+.reflex/
+test_gemini_new.py
+*.csv
+Habitual Trends files/
