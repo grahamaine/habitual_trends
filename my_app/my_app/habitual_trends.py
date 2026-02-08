@@ -3,13 +3,13 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
-# --- 1. CONFIGURATION ---
+# --- 1. SETUP ---
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 
-# --- 2. STATE (Logic) ---
+# --- 2. STATE ---
 class TrendState(rx.State):
     streak: int = 14
     mood: int = 88
@@ -29,10 +29,10 @@ class TrendState(rx.State):
             response = model.generate_content(prompt)
             self.ai_response = response.text
         except Exception as e:
-            self.ai_response = "Connection Error. Check API Key."
+            self.ai_response = "Connection Error."
         self.is_loading = False
 
-# --- 3. UI COMPONENTS (Visuals) ---
+# --- 3. UI COMPONENTS ---
 def sidebar_item(label: str, icon: str, active: bool = False):
     return rx.hstack(
         rx.icon(icon, size=20, color="white" if active else "gray"),
@@ -67,12 +67,14 @@ def stat_card(title: str, value: str, icon: str, color: str):
         bg="rgba(255,255,255,0.03)",
         border="1px solid rgba(255,255,255,0.05)",
         border_radius="16px",
+        width="100%",
+        min_width="250px", # Ensure cards don't get too small
     )
 
-# --- 4. MAIN LAYOUT ---
+# --- 4. RESPONSIVE LAYOUT (THE FIX) ---
 def index():
     return rx.hstack(
-        # -- LEFT SIDEBAR --
+        # -- LEFT SIDEBAR (Hidden on Mobile) --
         rx.vstack(
             rx.heading("PRO DASHBOARD", size="6", font_weight="900", color="white"),
             rx.text("HABITUAL TRENDS", size="1", color="gray", letter_spacing="2px"),
@@ -91,22 +93,34 @@ def index():
             padding="2em",
             bg="#0f1115", 
             border_right="1px solid rgba(255,255,255,0.05)",
-            display=["none", "none", "flex"], # Hide on mobile
+            display=["none", "none", "flex"], # DISPLAY LOGIC: None on mobile, Flex on desktop
         ),
 
-        # -- RIGHT CONTENT --
+        # -- RIGHT CONTENT (Adapts to Mobile) --
         rx.box(
             rx.vstack(
+                # Mobile Header (Only shows on mobile)
+                rx.hstack(
+                    rx.heading("HABITUAL", size="5", color="white"),
+                    rx.spacer(),
+                    rx.avatar(fallback="GB", size="2", color_scheme="plum"),
+                    width="100%",
+                    display=["flex", "flex", "none"], # Show on mobile, hide on desktop
+                    padding_bottom="1em",
+                ),
+
                 rx.heading("Welcome Back", size="8", color="white"),
                 rx.text("Your command center is ready.", color="gray"),
                 rx.spacer(height="2em"),
                 
-                # Stats Grid
+                # --- THE FIX IS HERE ---
+                # Instead of a list, we use the "Auto-Fit" string.
+                # This automatically stacks cards on mobile and spreads them on desktop.
                 rx.grid(
                     stat_card("Current Streak", f"{TrendState.streak} Days", "flame", "orange"),
                     stat_card("Mental Clarity", f"{TrendState.mood}%", "brain", "blue"),
                     stat_card("Habit Completion", f"{TrendState.completion}%", "target", "green"),
-                    columns="3",
+                    columns="repeat(auto-fit, minmax(240px, 1fr))", 
                     spacing="4",
                     width="100%",
                 ),
@@ -122,7 +136,8 @@ def index():
                             on_click=TrendState.ask_ai, 
                             loading=TrendState.is_loading, 
                             color_scheme="plum", 
-                            variant="soft"
+                            variant="soft",
+                            width="100%", # Full width button
                         ),
                         rx.divider(margin_y="1em", color_scheme="gray"),
                         rx.cond(
@@ -137,7 +152,7 @@ def index():
                     border_radius="16px",
                     width="100%",
                 ),
-                padding="3em",
+                padding=["1.5em", "3em"],
                 max_width="1200px",
             ),
             width="100%",
