@@ -1,101 +1,180 @@
 import reflex as rx
-import os
-from opik import track
-from opik.integrations.langchain import OpikTracer
-from langchain_google_genai import ChatGoogleGenerativeAI
+import httpx
+from typing import List, Dict
 
-# 1. Initialize Opik and Gemini
-# (Consider moving these keys to a .env file later)
-os.environ["OPIK_PROJECT_NAME"] = "habitual_trends"
-opik_tracer = OpikTracer()
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro")
+# CONFIG: URL for your Python FastAPI backend
+BACKEND_URL = "http://127.0.0.1:3005/api/habits"
 
-# --- STEP 1: Define the tracked logic OUTSIDE the class ---
-@track
-async def process_wellness_check(count: int):
-    """
-    This function handles both the status logic and the AI call.
-    The @track decorator logs the entire process to Opik.
-    """
-    status = "Normal" if count < 10 else "High Activity"
-    
-    # We call Gemini here. Opik will nest this LLM call under this trace.
-    response = await llm.ainvoke(
-        f"The user has a {status} wellness count of {count}. Give a 1-sentence tip.",
-        config={"callbacks": [opik_tracer]}
-    )
-    
-    return {
-        "status": status,
-        "tip": response.content
-    }
-
+# --- 1. STATE & LOGIC ---
 class State(rx.State):
-    """The app state for Habitual Trends."""
-    count: int = 0
-    status_report: str = ""
-    ai_response: str = ""
-    is_loading: bool = False
+    """The app state managing data and communication."""
+    habits: List[Dict] = []
+    new_habit_name: str = ""
+    
+    # Dashboard Mock Stats (Can be automated later)
+    streak: int = 12
+    completion: str = "85%"
+    total_habits: int = 0
 
-    async def run_wellness_flow(self):
-        """Triggered by the UI to run the full tracked process."""
-        self.is_loading = True
-        yield
-        
-        # Call our tracked function
-        result = await process_wellness_check(self.count)
-        
-        self.status_report = result["status"]
-        self.ai_response = result["tip"]
-        self.is_loading = False
+    async def fetch_habits(self):
+        """Fetch real habits from the SQLite database via the FastAPI backend."""
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(BACKEND_URL)
+                if response.status_code == 200:
+                    self.habits = response.json()
+                    self.total_habits = len(self.habits)
+            except Exception as e:
+                print(f"Error fetching habits: {e}")
 
-    def increment(self):
-        self.count += 1
+    async def add_habit(self):
+        """Send a new habit to the database and refresh the UI."""
+        if not self.new_habit_name.strip():
+            return
+            
+        async with httpx.AsyncClient() as client:
+            try:
+                await client.post(BACKEND_URL, json={"name": self.new_habit_name})
+                self.new_habit_name = ""  # Clear input field
+                await self.fetch_habits()  # Refresh the list
+            except Exception as e:
+                print(f"Error adding habit: {e}")
 
-    def decrement(self):
-        self.count -= 1
+    def on_load(self):
+        """Runs automatically when the page opens."""
+        return State.fetch_habits
 
-def index() -> rx.Component:
-    return rx.center(
+# --- 2. UI COMPONENTS (Helper Functions) ---
+
+def stats_card(title: str, value: rx.Var, subtext: str):
+    """A reusable glass-morphism card for the top stats."""
+    return rx.vstack(
+        rx.text(title, color="#a0aec0", font_size="0.9em", font_weight="bold"),
+        rx.text(value, color="cyan", font_size="2em", font_weight="bold"),
+        rx.text(subtext, color="white", font_size="0.8em"),
+        bg="rgba(18, 25, 45, 0.8)",
+        backdrop_filter="blur(10px)",
+        padding="1.5em",
+        border_radius="15px",
+        border="1px solid rgba(255, 255, 255, 0.1)",
+        width="100%",
+        align_items="start",
+        box_shadow="0 4px 30px rgba(0, 0, 0, 0.5)",
+    )
+
+def sidebar():
+    """The left-hand navigation sidebar."""
+    return rx.vstack(
+        # Logo Area
         rx.vstack(
-            rx.heading("Habitual Trends", size="9"),
-            rx.text("Track your medical habits and wellness data."),
-            
-            rx.hstack(
-                rx.button("Decrement", on_click=State.decrement, color_scheme="ruby", variant="soft"),
-                rx.heading(State.count, size="7"),
-                rx.button("Increment", on_click=State.increment, color_scheme="grass", variant="soft"),
-                spacing="4",
-                align="center",
-            ),
-            
-            rx.divider(),
-
-            rx.button(
-                "Run Wellness Check", 
-                on_click=State.run_wellness_flow,
-                loading=State.is_loading,
-                color_scheme="indigo",
-            ),
-
-            rx.cond(
-                State.status_report != "",
-                rx.card(
-                    rx.text(f"Status: {State.status_report}", weight="bold"),
-                    rx.text(State.ai_response, font_style="italic"),
-                    padding="4",
-                    width="100%",
-                )
-            ),
-            
-            rx.text("System Status: Operational", color_content_hint=True),
-            spacing="5",
-            align="center",
-            text_align="center",
+            rx.icon(tag="activity", color="cyan", size=40),
+            rx.heading("HABITUAL", size="4", color="cyan", letter_spacing="2px"),
+            rx.text("AI AGENT", size="1", color="white", letter_spacing="4px"),
+            align_items="center",
+            spacing="1",
+            padding_bottom="3em",
         ),
+        
+        # Navigation
+        rx.vstack(
+            rx.hstack(rx.icon(tag="layout_dashboard", color="cyan"), rx.text("Dashboard", color="white"), spacing="3"),
+            rx.hstack(rx.icon(tag="list", color="cyan"), rx.text("My Habits", color="white"), spacing="3"),
+            rx.hstack(rx.icon(tag="settings", color="cyan"), rx.text("Settings", color="white"), spacing="3"),
+            align_items="start",
+            spacing="6",
+            width="100%"
+        ),
+        
+        bg="#0B1120",
         height="100vh",
-        padding="20px",
+        width="280px",
+        padding="2em",
+        border_right="1px solid #1f2937",
+        display=["none", "none", "flex", "flex"],
+    )
+
+def habit_item(habit: Dict):
+    """A single row representing a habit in the list."""
+    return rx.hstack(
+        rx.hstack(
+            rx.icon(tag="circle", size=18, color="gray"),
+            rx.text(habit["name"], color="white", font_weight="medium"),
+            spacing="3",
+        ),
+        rx.badge(f"Streak: {habit['streak']}", color_scheme="cyan", variant="outline"),
+        justify="space-between",
+        width="100%",
+        padding="1em",
+        border_bottom="1px solid rgba(255, 255, 255, 0.05)",
+        _hover={"bg": "rgba(255, 255, 255, 0.02)"},
+    )
+
+# --- 3. MAIN PAGE LAYOUT ---
+def index():
+    return rx.hstack(
+        sidebar(),
+        rx.vstack(
+            rx.heading("Dashboard Overview", color="white", size="7", margin_bottom="1em"),
+            
+            # Stats Row
+            rx.grid(
+                stats_card("Global Streak", State.streak, "Days Active"),
+                stats_card("Completion", State.completion, "Today's Target"),
+                stats_card("Active Habits", State.total_habits, "Tracking Now"),
+                columns="3",
+                spacing="5",
+                width="100%",
+            ),
+
+            # Habit Tracker Section
+            rx.vstack(
+                rx.heading("Manage Habits", size="5", color="white", margin_top="2em"),
+                
+                # Input Field to Add New Habits
+                rx.hstack(
+                    rx.input(
+                        placeholder="What's your next habit?", 
+                        on_change=State.set_new_habit_name,
+                        value=State.new_habit_name,
+                        bg="rgba(255, 255, 255, 0.05)",
+                        border="1px solid #334",
+                        color="white",
+                        _focus={"border_color": "cyan"},
+                        width="400px"
+                    ),
+                    rx.button(
+                        "Create Habit", 
+                        on_click=State.add_habit, 
+                        bg="cyan", 
+                        color="black",
+                        _hover={"bg": "#00e5ff"}
+                    ),
+                    spacing="4",
+                    padding_y="1em"
+                ),
+
+                # The Habit List
+                rx.vstack(
+                    rx.foreach(State.habits, habit_item),
+                    width="100%",
+                    bg="rgba(18, 25, 45, 0.5)",
+                    border_radius="12px",
+                    border="1px solid rgba(255, 255, 255, 0.1)",
+                    padding="1em",
+                ),
+                align_items="start",
+                width="100%",
+            ),
+
+            bg="#0f172a",
+            width="100%",
+            height="100vh",
+            padding="3em",
+            overflow_y="auto",
+        ),
+        spacing="0",
+        on_mount=State.on_load, # Fetches data when page loads
     )
 
 app = rx.App()
-app.add_page(index, title="Habitual Trends")
+app.add_page(index)

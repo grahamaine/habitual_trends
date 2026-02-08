@@ -6,5 +6,5 @@ model_list:
 
 general_settings:
   master_key: sk-1234 # Change this to a secure key
-  cors_allow_origins: ["http://localhost:3000"] # Allows your frontend to connect
+  cors_allow_origins: ["http://localhost:3005"] # ✅ CHANGED: Matches your backend port
   disable_ui: false # Ensure the UI is enabled if you are using the dashboard

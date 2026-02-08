@@ -50,3 +50,27 @@ __pycache__/
 .reflex/
 *.db
 .env
+# Ignore the Python environment variable file (if you use one)
+.env
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore your specific key test files if they contain hardcoded keys
+test_gemini.py
+# Virtual Environments
+.venv/
+.venv312/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# Build and Distribution
+build/
+dist/
+*.egg-info/
+
+# Sensitive data
+.env

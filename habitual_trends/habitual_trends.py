@@ -11,7 +11,7 @@ class State(rx.State):
     habits: List[Dict] = []
     new_habit_name: str = ""
     
-    # Dashboard Mock Stats (Can be automated later)
+    # Dashboard Mock Stats
     streak: int = 12
     completion: str = "85%"
     total_habits: int = 0
@@ -35,19 +35,29 @@ class State(rx.State):
         async with httpx.AsyncClient() as client:
             try:
                 await client.post(BACKEND_URL, json={"name": self.new_habit_name})
-                self.new_habit_name = ""  # Clear input field
-                await self.fetch_habits()  # Refresh the list
+                self.new_habit_name = ""  
+                await self.fetch_habits()  
             except Exception as e:
                 print(f"Error adding habit: {e}")
+
+    async def delete_habit(self, habit_id: int):
+        """Delete a habit by ID and refresh the list."""
+        async with httpx.AsyncClient() as client:
+            try:
+                # Calls the DELETE route on your FastAPI backend
+                response = await client.delete(f"{BACKEND_URL}/{habit_id}")
+                if response.status_code == 200:
+                    await self.fetch_habits()  
+            except Exception as e:
+                print(f"Error deleting habit: {e}")
 
     def on_load(self):
         """Runs automatically when the page opens."""
         return State.fetch_habits
 
-# --- 2. UI COMPONENTS (Helper Functions) ---
+# --- 2. UI COMPONENTS ---
 
 def stats_card(title: str, value: rx.Var, subtext: str):
-    """A reusable glass-morphism card for the top stats."""
     return rx.vstack(
         rx.text(title, color="#a0aec0", font_size="0.9em", font_weight="bold"),
         rx.text(value, color="cyan", font_size="2em", font_weight="bold"),
@@ -63,9 +73,7 @@ def stats_card(title: str, value: rx.Var, subtext: str):
     )
 
 def sidebar():
-    """The left-hand navigation sidebar."""
     return rx.vstack(
-        # Logo Area
         rx.vstack(
             rx.icon(tag="activity", color="cyan", size=40),
             rx.heading("HABITUAL", size="4", color="cyan", letter_spacing="2px"),
@@ -74,8 +82,6 @@ def sidebar():
             spacing="1",
             padding_bottom="3em",
         ),
-        
-        # Navigation
         rx.vstack(
             rx.hstack(rx.icon(tag="layout_dashboard", color="cyan"), rx.text("Dashboard", color="white"), spacing="3"),
             rx.hstack(rx.icon(tag="list", color="cyan"), rx.text("My Habits", color="white"), spacing="3"),
@@ -84,7 +90,6 @@ def sidebar():
             spacing="6",
             width="100%"
         ),
-        
         bg="#0B1120",
         height="100vh",
         width="280px",
@@ -94,15 +99,31 @@ def sidebar():
     )
 
 def habit_item(habit: Dict):
-    """A single row representing a habit in the list."""
+    """A single row representing a habit in the list with a delete option."""
     return rx.hstack(
         rx.hstack(
             rx.icon(tag="circle", size=18, color="gray"),
             rx.text(habit["name"], color="white", font_weight="medium"),
             spacing="3",
         ),
-        rx.badge(f"Streak: {habit['streak']}", color_scheme="cyan", variant="outline"),
-        justify="space-between",
+        
+        rx.hstack(
+            rx.badge(f"Streak: {habit['streak']}", color_scheme="cyan", variant="outline"),
+            
+            # The new Delete Button
+            rx.icon_button(
+                rx.icon(tag="trash_2", size=16),
+                on_click=lambda: State.delete_habit(habit["id"]),
+                variant="ghost",
+                color_scheme="red",
+                cursor="pointer",
+                _hover={"bg": "rgba(255, 0, 0, 0.1)"},
+            ),
+            spacing="4",
+            align="center",
+        ),
+        
+        justify="between", 
         width="100%",
         padding="1em",
         border_bottom="1px solid rgba(255, 255, 255, 0.05)",
@@ -116,7 +137,6 @@ def index():
         rx.vstack(
             rx.heading("Dashboard Overview", color="white", size="7", margin_bottom="1em"),
             
-            # Stats Row
             rx.grid(
                 stats_card("Global Streak", State.streak, "Days Active"),
                 stats_card("Completion", State.completion, "Today's Target"),
@@ -126,11 +146,9 @@ def index():
                 width="100%",
             ),
 
-            # Habit Tracker Section
             rx.vstack(
                 rx.heading("Manage Habits", size="5", color="white", margin_top="2em"),
                 
-                # Input Field to Add New Habits
                 rx.hstack(
                     rx.input(
                         placeholder="What's your next habit?", 
@@ -153,7 +171,6 @@ def index():
                     padding_y="1em"
                 ),
 
-                # The Habit List
                 rx.vstack(
                     rx.foreach(State.habits, habit_item),
                     width="100%",
@@ -173,8 +190,7 @@ def index():
             overflow_y="auto",
         ),
         spacing="0",
-        on_mount=State.on_load, # Fetches data when page loads
     )
 
 app = rx.App()
-app.add_page(index)
+app.add_page(index, on_load=State.on_load)

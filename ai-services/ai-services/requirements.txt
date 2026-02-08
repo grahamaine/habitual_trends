@@ -1,2 +1,4 @@
-fastapi
-uvicorn
+pip freeze > requirements.txt
+git add requirements.txt
+git commit -m "Update requirements for Gemini 2.0 and google-genai"
+git push origin main

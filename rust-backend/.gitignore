@@ -1,2 +1,33 @@
-/target
+# --- Secrets ---
 .env
+.env.*
+
+# --- Virtual Environments (Python) ---
+# This stops all those .venv/Lib/site-packages files
+.venv/
+venv/
+ENV/
+
+# --- Frontend & Reflex Builds ---
+# This stops the .web and node_modules folders
+.web/
+.web_old/
+node_modules/
+
+# --- Rust Artifacts ---
+# This stops the target/ folder
+target/
+
+# --- Python & Database ---
+__pycache__/
+*.py[cod]
+alembic/
+*.db
+
+# --- IDEs ---
+.vscode/
+.idea/
+# --- Python Build/Metadata ---
+*.egg-info/
+dist/
+build/
