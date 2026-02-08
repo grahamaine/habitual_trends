@@ -4,7 +4,11 @@ import os
 from dotenv import load_dotenv
 
 # --- 1. SETUP ---
+# Load environment variables (for local dev)
 load_dotenv()
+
+# Configure Gemini API
+# Note: On Reflex Cloud, set this via 'reflex cloud secrets set GOOGLE_API_KEY ...'
 api_key = os.getenv("GOOGLE_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
@@ -30,24 +34,31 @@ class TrendState(rx.State):
     def set_view(self, view_name: str):
         self.current_view = view_name
 
+    def set_journal_entry(self, text: str):
+        self.journal_entry = text
+
     def save_journal(self):
         if self.journal_entry:
             self.saved_entries.append(self.journal_entry)
             self.journal_entry = "" # Clear input
 
-    def ask_ai(self):
+    async def ask_ai(self):
         self.is_loading = True
         yield
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            prompt = (
-                f"User Data: Streak {self.streak} days, Mood {self.mood}/100. "
-                "Give me 3 short, punchy, elite-performance habits."
-            )
-            response = model.generate_content(prompt)
-            self.ai_response = response.text
+            # Check if API key is present
+            if not api_key:
+                self.ai_response = "Error: Google API Key not found. Please set GOOGLE_API_KEY in secrets."
+            else:
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                prompt = (
+                    f"User Data: Streak {self.streak} days, Mood {self.mood}/100. "
+                    "Give me 3 short, punchy, elite-performance habits."
+                )
+                response = model.generate_content(prompt)
+                self.ai_response = response.text
         except Exception as e:
-            self.ai_response = "Connection Error."
+            self.ai_response = f"Connection Error: {str(e)}"
         self.is_loading = False
 
 # --- 3. UI COMPONENTS ---
@@ -60,12 +71,11 @@ def sidebar_item(label: str, icon: str, target_view: str):
         padding="12px",
         border_radius="10px",
         cursor="pointer",
-        # Logic: If this tab is active, show background. If not, transparent.
         bg=rx.cond(TrendState.current_view == target_view, "rgba(255,255,255,0.1)", "transparent"),
         _hover={"bg": "rgba(255,255,255,0.05)"},
         width="100%",
         align="center",
-        on_click=TrendState.set_view(target_view) # <--- THIS MAKES IT CLICKABLE
+        on_click=TrendState.set_view(target_view)
     )
 
 def stat_card(title: str, value: str, icon: str, color: str):
@@ -104,7 +114,7 @@ def overview_view():
             stat_card("Current Streak", f"{TrendState.streak} Days", "flame", "orange"),
             stat_card("Mental Clarity", f"{TrendState.mood}%", "brain", "blue"),
             stat_card("Habit Completion", f"{TrendState.completion}%", "target", "green"),
-            columns="repeat(auto-fit, minmax(240px, 1fr))", 
+            columns=rx.breakpoints(initial="1", sm="3"), 
             spacing="4",
             width="100%",
         ),
@@ -186,7 +196,7 @@ def index():
     return rx.hstack(
         # -- LEFT SIDEBAR --
         rx.vstack(
-            rx.heading("PRO DASHBOARD", size="6", font_weight="900", color="white"),
+            rx.heading("PRO DASHBOARD", size="6", weight="bold", color="white"),
             rx.text("HABITUAL TRENDS", size="1", color="gray", letter_spacing="2px"),
             rx.spacer(height="2em"),
             rx.vstack(
