@@ -1,0 +1,11 @@
+{
+  "intake": [
+    {"item": "Rolex (2 eggs)", "calories": 550, "macros": "High Fat/Carb"},
+    {"item": "Black Tea (sugar)", "calories": 40, "macros": "Sugar"}
+  ],
+  "activity": null,
+  "biometrics": {
+    "mood": "Sluggish",
+    "energy_level": "Low"
+  }
+}

@@ -1,0 +1,7 @@
+﻿.venv/
+.venv312/
+venv/
+__pycache__/
+*.db
+.web/
+.git/
